@@ -40,7 +40,7 @@ function ParDeBarreiras(altura, abertura, x) {
     this.setX(x)
 }
 
-function Barreiras(altura, largura, abertura, espaco) {
+function Barreiras(altura, largura, abertura, espaco, notificarPonto) {
 
     this.pares = [
         new ParDeBarreiras(altura, abertura, largura),
@@ -61,7 +61,7 @@ function Barreiras(altura, largura, abertura, espaco) {
             const meio = largura / 2
             const cruzouMeio = par.getX() + deslocamento >= meio && par.getX() < meio
 
-            // if (cruzouMeio) notificarPonto()
+            if (cruzouMeio) notificarPonto()
         })
     }
 }
@@ -92,15 +92,63 @@ function Passaro(alturaJogo) {
     this.setY(alturaJogo / 2)
 }
 
+function Progresso() {
+    this.elemento = novoElemento('span', 'progresso')
 
-const barreiras = new Barreiras(700, 1200, 200, 400)
-const passaro = new Passaro(700)
-const areaDoJogo = document.querySelector('[wm-flappy]')
-areaDoJogo.appendChild(passaro.elemento)
-barreiras.pares.forEach(par => areaDoJogo.appendChild(par.elemento))
+    this.atualizarPontos = pontos => this.elemento.innerHTML = pontos
 
-setInterval(() => {
-    barreiras.animar()
-    passaro.animar()
-}, 20)
+    this.atualizarPontos(0)
+}
 
+function sobreposicao(elementoA, elementoB) {
+    const a = elementoA.getBoundingClientRect() // Pega a caixa do elemento no DOM
+    const b = elementoB.getBoundingClientRect()
+
+    const horizontal = a.left + a.width >= b.left && b.left + b.width >= a.left
+    const vertical = a.top + a.height >= b.top && b.top + b.height >= a.top
+
+    return horizontal && vertical
+}
+
+function colidiu(passaro, barreiras) {
+    let colidiu = false
+    barreiras.pares.forEach(parDeBarreiras => {
+        if (!colidiu) {
+            const superior = parDeBarreiras.superior.elemento
+            const inferior = parDeBarreiras.inferior.elemento
+            colidiu = sobreposicao(passaro.elemento, superior)
+                || sobreposicao(passaro.elemento, inferior)
+        }
+    })
+    return colidiu
+}
+
+
+function FlappyBird() {
+    let pontos = 0
+    const areaDoJogo = document.querySelector('[wm-flappy]')
+    const largura = areaDoJogo.clientWidth
+    const altura = areaDoJogo.clientHeight
+    const progresso = new Progresso()
+    const barreiras = new Barreiras(altura, largura, 200, 400, () => {
+        progresso.atualizarPontos(++pontos)
+    })
+    const passaro = new Passaro(altura)
+
+    areaDoJogo.appendChild(progresso.elemento)
+    areaDoJogo.appendChild(passaro.elemento)
+    barreiras.pares.forEach(par => areaDoJogo.appendChild(par.elemento))
+
+    this.start = () => {
+        const temporizador = setInterval(() => {
+            barreiras.animar()
+            passaro.animar()
+            if (colidiu(passaro, barreiras))
+                clearInterval(temporizador)
+
+        }, 20)
+
+    }
+}
+const flappy = new FlappyBird()
+flappy.start()
